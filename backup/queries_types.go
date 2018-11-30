@@ -137,6 +137,147 @@ func (t BaseType) FQN() string {
 	return utils.MakeFQN(t.Schema, t.Name)
 }
 
+// func GetBaseTypes(connectionPool *dbconn.DBConn) []Type {
+// 	version4query := fmt.Sprintf(`
+// SELECT
+// 	t.oid,
+// 	quote_ident(n.nspname) AS schema,
+// 	quote_ident(t.typname) AS name,
+// 	t.typtype,
+// 	t.typinput,
+// 	t.typoutput,
+// 	t.typreceive AS receive,
+// 	t.typsend AS send,
+// 	t.typlen,
+// 	t.typbyval,
+// 	CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
+// 	t.typstorage,
+// 	coalesce(t.typdefault, '') AS defaultval,
+// 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
+// 	'U' AS typcategory AS category,
+// 	t.typdelim,
+// 	coalesce(array_to_string(typoptions, ', '), '') AS storageoptions
+// FROM pg_type t
+// JOIN pg_namespace n ON t.typnamespace = n.oid
+// LEFT JOIN pg_type_encoding e ON t.oid = e.typid
+// WHERE t.typelem != 0
+// AND length(t.typname) > 1
+// AND t.typname[0] = '_'
+// AND substring(t.typname FROM 2) = (
+// 	SELECT
+// 		it.typname
+// 	FROM pg_type it
+// 	WHERE it.oid = t.typelem
+// )
+// GROUP BY t.oid, schema, name, t.typtype, t.typinput, t.typoutput, receive, send, t.typlen, t.typbyval, alignment, t.typstorage, defaultval, element, t.typdelim, storageoptions
+// `)
+
+// 	version5query := fmt.Sprintf(`
+// SELECT
+// 	t.oid,
+// 	quote_ident(n.nspname) AS schema,
+// 	quote_ident(t.typname) AS name,
+// 	t.typtype,
+// 	t.typinput,
+// 	t.typoutput,
+// 	CASE WHEN t.typreceive = '-'::regproc THEN '' ELSE t.typreceive::regproc::text END AS receive,
+// 	CASE WHEN t.typsend = '-'::regproc THEN '' ELSE t.typsend::regproc::text END AS send,
+// 	CASE WHEN t.typmodin = '-'::regproc THEN '' ELSE t.typmodin::regproc::text END AS modin,
+// 	CASE WHEN t.typmodout = '-'::regproc THEN '' ELSE t.typmodout::regproc::text END AS modout,
+// 	t.typlen,
+// 	t.typbyval,
+// 	CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
+// 	t.typstorage,
+// 	coalesce(t.typdefault, '') AS defaultval,
+// 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
+// 	'U' AS typcategory AS category,
+// 	t.typdelim,
+// 	coalesce(array_to_string(typoptions, ', '), '') AS storageoptions
+// FROM pg_type t
+// JOIN pg_namespace n ON t.typnamespace = n.oid
+// LEFT JOIN pg_type_encoding e ON t.oid = e.typid`)
+
+// 	masterQuery := fmt.Sprintf(`
+// SELECT
+// 	t.oid,
+// 	quote_ident(n.nspname) AS schema,
+// 	quote_ident(t.typname) AS name,
+// 	t.typtype,
+// 	t.typinput,
+// 	t.typoutput,
+// 	CASE WHEN t.typreceive = '-'::regproc THEN '' ELSE t.typreceive::regproc::text END AS receive,
+// 	CASE WHEN t.typsend = '-'::regproc THEN '' ELSE t.typsend::regproc::text END AS send,
+// 	CASE WHEN t.typmodin = '-'::regproc THEN '' ELSE t.typmodin::regproc::text END AS modin,
+// 	CASE WHEN t.typmodout = '-'::regproc THEN '' ELSE t.typmodout::regproc::text END AS modout,
+// 	t.typlen,
+// 	t.typbyval,
+// 	CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
+// 	t.typstorage,
+// 	coalesce(t.typdefault, '') AS defaultval,
+// 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
+// 	t.typcategory AS category,
+// 	t.typispreferred AS preferred,
+// 	t.typdelim,
+// 	(t.typcollation <> 0) AS collatable,
+// 	coalesce(array_to_string(typoptions, ', '), '') AS storageoptions
+// FROM pg_type t
+// JOIN pg_namespace n ON t.typnamespace = n.oid
+// LEFT JOIN pg_type_encoding e ON t.oid = e.typid`)
+
+// 	selectClause := fmt.Sprintf(`
+// SELECT
+// 	t.oid,
+// 	quote_ident(n.nspname) AS schema,
+// 	quote_ident(t.typname) AS name,
+// 	t.typtype,
+// 	t.typinput,
+// 	t.typoutput,
+// 	%s
+// 	t.typlen,
+// 	t.typbyval,
+// 	CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
+// 	t.typstorage,
+// 	coalesce(t.typdefault, '') AS defaultval,
+// 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
+// 	%s
+// 	t.typdelim,
+// 	%s
+// 	coalesce(array_to_string(typoptions, ', '), '') AS storageoptions
+// FROM pg_type t
+// JOIN pg_namespace n ON t.typnamespace = n.oid
+// LEFT JOIN pg_type_encoding e ON t.oid = e.typid`, typeModClause, typeCategoryClause, typeCollatableClause)
+// 	groupBy := "t.oid, schema, name, t.typtype, t.typinput, t.typoutput, receive, send,%st.typlen, t.typbyval, alignment, t.typstorage, defaultval, element, t.typdelim, storageoptions"
+// 	if connectionPool.Version.Is("4") {
+// 		groupBy = fmt.Sprintf(groupBy, " ")
+// 	} else if connectionPool.Version.Is("5") {
+// 		groupBy = fmt.Sprintf(groupBy, " modin, modout, ")
+// 	} else {
+// 		groupBy = fmt.Sprintf(groupBy, " modin, modout, t.typcategory, t.typispreferred, t.typcollation, ")
+
+// 	}
+// 	query := getTypeQuery(connectionPool, selectClause, groupBy, "b")
+
+// 	results := make([]Type, 0)
+// 	err := connectionPool.Select(&results, query)
+// 	gplog.FatalOnError(err)
+// 	/*
+// 	 * GPDB 4.3 has no built-in regproc-to-text cast and uses "-" in place of
+// 	 * NULL for several fields, so to avoid dealing with hyphens later on we
+// 	 * replace those with empty strings here.
+// 	 */
+// 	if connectionPool.Version.Before("5") {
+// 		for i := range results {
+// 			if results[i].Send == "-" {
+// 				results[i].Send = ""
+// 			}
+// 			if results[i].Receive == "-" {
+// 				results[i].Receive = ""
+// 			}
+// 		}
+// 	}
+// 	return results
+// }
+
 func GetBaseTypes(connectionPool *dbconn.DBConn) []BaseType {
 	typeModClause := ""
 	if connectionPool.Version.Before("5") {
