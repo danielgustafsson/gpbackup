@@ -330,6 +330,7 @@ LEFT JOIN pg_type_encoding e ON t.oid = e.typid`, typeModClause, typeCategoryCla
 
 	}
 	query := getTypeQuery(connectionPool, selectClause, groupBy, "b")
+	fmt.Println(query)
 
 	results := make([]BaseType, 0)
 	err := connectionPool.Select(&results, query)
@@ -372,15 +373,20 @@ func (t CompositeType) FQN() string {
 }
 
 func GetCompositeTypes(connectionPool *dbconn.DBConn) []CompositeType {
-	selectClause := `
+	/*
+	 * We join with pg_class to check if a type is truly a composite type
+	 * (relkind='c') or implicitly generated from a relation
+	 */
+	query := `
 SELECT
 	t.oid,
 	quote_ident(n.nspname) AS schema,
 	quote_ident(t.typname) AS name
 FROM pg_type t
-JOIN pg_namespace n ON t.typnamespace = n.oid`
-	groupBy := "t.oid, schema, name, t.typtype"
-	query := getTypeQuery(connectionPool, selectClause, groupBy, "c")
+JOIN pg_namespace n ON t.typnamespace = n.oid
+JOIN pg_class c ON t.typrelid = c.oid
+WHERE t.typtype = 'c'
+AND c.relkind = 'c'`
 
 	compTypes := make([]CompositeType, 0)
 	err := connectionPool.Select(&compTypes, query)
